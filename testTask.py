@@ -17,7 +17,7 @@ def scan_nordvpn(startPoint, interRange):
         ipStr = 'Нет ответа'
         try:
             ipStr = socket.gethostbyname("us" + str(i + 1 + startPoint) + ".nordvpn.com")
-            print(ipStr + str(i + 1 + startPoint))
+            print(ipStr + " " + str(i + 1 + startPoint))
         except:
             print('Ошибка ' + str(i + 1 + startPoint))
         tempCur.execute("INSERT INTO nordip" + str(startPoint) + "(server, ip) VALUES('" + str(i + 1 + startPoint) + "', '" + ipStr +"');")
@@ -33,27 +33,25 @@ if __name__ == '__main__':
     mainBDConn.commit()
 
     # Ввод interationRange, который отвечает за дительность и стартовые точки в функции
-    print('Ввдите по сколько доменов вы хотите сканировать в одном потоке из 4')
+    print('Ввдите по сколько доменов сканировать в одном потоке')
     interationRange = int(input())
 
-    # Создание нескольких процессов и их запуск (работает быстрее)
-    proc1 = Process(target=scan_nordvpn, args=(0, interationRange,))
-    proc2 = Process(target=scan_nordvpn, args=(interationRange, interationRange))
-    proc3 = Process(target=scan_nordvpn, args=(interationRange*2, interationRange))
-    proc4 = Process(target=scan_nordvpn, args=(interationRange*3, interationRange))
-    
-    proc1.start()
-    proc2.start()
-    proc3.start()
-    proc4.start()
+    # Ввод countProc, который отвечает за количество процессов
+    print('Ввдите количество потоков')
+    countProc = int(input())
 
-    proc1.join()
-    proc2.join()
-    proc3.join()
-    proc4.join()
+    # Создание нескольких процессов и их запуск (работает быстрее)
+    allProcs = []
+    for i in range(countProc):
+        proc = Process(target=scan_nordvpn, name='proc'+str(i), args=(interationRange*i, interationRange))
+        allProcs.append(proc)
+        proc.start()
+        
+    for p in allProcs:
+        p.join() 
 
     # Перенос данных в главную таблицу и удаление временных
-    for i in range(4):
+    for i in range(countProc):
         mainBDCur.execute("ATTACH 'tempNordScan" + str(i*interationRange) + ".db' as db" + str(i*interationRange) + ";")
         mainBDCur.execute("INSERT INTO nordip (server, ip) SELECT server, ip FROM nordip" + str(i*interationRange))
         mainBDConn.commit()
